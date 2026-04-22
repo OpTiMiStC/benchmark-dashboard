@@ -86,52 +86,59 @@ fn app() -> Html {
         .collect();
 
     html! {
-        <>
-            <h1>{ "Synthetic Benchmark Dashboard" }</h1>
-            <p>
-                { "Demo application for CI/CD deployment. All benchmark data shown here is synthetic." }
-            </p>
+        <main class="app-shell">
+            <section class="hero-card">
+                <span class="eyebrow">{ "Benchmark Monitor" }</span>
+                <h1>{ "Synthetic Benchmark Dashboard" }</h1>
+                <p>
+                    { "Demo application for CI/CD deployment. All benchmark data shown here is synthetic." }
+                </p>
+            </section>
 
-            <div class="controls">
-                <input
-                    type="text"
-                    placeholder="Filter by device or benchmark"
-                    value={(*filter_text).clone()}
-                    oninput={on_filter_input}
-                />
-                <input
-                    type="number"
-                    placeholder="Minimum score"
-                    value={(*min_score).to_string()}
-                    oninput={on_min_score_input}
-                />
-            </div>
+            <section class="panel">
+                <div class="controls">
+                    <input
+                        type="text"
+                        placeholder="Filter by device or benchmark"
+                        value={(*filter_text).clone()}
+                        oninput={on_filter_input}
+                    />
+                    <input
+                        type="number"
+                        placeholder="Minimum score"
+                        value={(*min_score).to_string()}
+                        oninput={on_min_score_input}
+                    />
+                </div>
 
-            <p>{ format!("Showing {} result(s)", filtered.len()) }</p>
+                <p class="results-count">{ format!("Showing {} result(s)", filtered.len()) }</p>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>{ "Device" }</th>
-                        <th>{ "Benchmark" }</th>
-                        <th>{ "Score" }</th>
-                        <th>{ "Power (W)" }</th>
-                        <th>{ "Test Date" }</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    { for filtered.iter().map(|item| html! {
-                        <tr>
-                            <td>{ &item.device }</td>
-                            <td>{ &item.benchmark }</td>
-                            <td>{ item.score }</td>
-                            <td>{ item.power_watts }</td>
-                            <td>{ &item.test_date }</td>
-                        </tr>
-                    })}
-                </tbody>
-            </table>
-        </>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{ "Device" }</th>
+                                <th>{ "Benchmark" }</th>
+                                <th>{ "Score" }</th>
+                                <th>{ "Power (W)" }</th>
+                                <th>{ "Test Date" }</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            { for filtered.iter().map(|item| html! {
+                                <tr>
+                                    <td>{ &item.device }</td>
+                                    <td>{ &item.benchmark }</td>
+                                    <td>{ item.score }</td>
+                                    <td>{ item.power_watts }</td>
+                                    <td>{ &item.test_date }</td>
+                                </tr>
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
     }
 }
 
