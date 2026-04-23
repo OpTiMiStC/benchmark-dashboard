@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 struct Benchmark {
     device: String,
     benchmark: String,
@@ -78,7 +78,7 @@ fn sample_data() -> Vec<Benchmark> {
     .collect()
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum SortField {
     Device,
     Benchmark,
@@ -87,7 +87,7 @@ enum SortField {
     TestDate,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct SortConfig {
     field: SortField,
     ascending: bool,
@@ -112,6 +112,27 @@ fn sort_indicator(current: Option<SortConfig>, field: SortField) -> &'static str
         Some(config) if config.field == field => " ↓",
         None | Some(_) => "",
     }
+}
+
+fn sort_benchmarks(items: &mut [Benchmark], config: SortConfig) {
+    items.sort_by(|left, right| {
+        let ordering = match config.field {
+            SortField::Device => left.device.to_lowercase().cmp(&right.device.to_lowercase()),
+            SortField::Benchmark => left
+                .benchmark
+                .to_lowercase()
+                .cmp(&right.benchmark.to_lowercase()),
+            SortField::Score => left.score.cmp(&right.score),
+            SortField::CostPerRun => left.cost_per_run_cents.cmp(&right.cost_per_run_cents),
+            SortField::TestDate => left.test_date.cmp(&right.test_date),
+        };
+
+        if config.ascending {
+            ordering
+        } else {
+            ordering.reverse()
+        }
+    });
 }
 
 #[function_component(App)]
@@ -175,24 +196,7 @@ fn app() -> Html {
         .collect();
 
     if let Some(config) = *sort_config {
-        filtered.sort_by(|left, right| {
-            let ordering = match config.field {
-                SortField::Device => left.device.to_lowercase().cmp(&right.device.to_lowercase()),
-                SortField::Benchmark => left
-                    .benchmark
-                    .to_lowercase()
-                    .cmp(&right.benchmark.to_lowercase()),
-                SortField::Score => left.score.cmp(&right.score),
-                SortField::CostPerRun => left.cost_per_run_cents.cmp(&right.cost_per_run_cents),
-                SortField::TestDate => left.test_date.cmp(&right.test_date),
-            };
-
-            if config.ascending {
-                ordering
-            } else {
-                ordering.reverse()
-            }
-        });
+        sort_benchmarks(&mut filtered, config);
     }
 
     html! {
@@ -266,6 +270,13 @@ fn app() -> Html {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 fn main() {
     yew::Renderer::<App>::new().render();
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+fn main() {}
+
+#[cfg(test)]
+mod tests;
