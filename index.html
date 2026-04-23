@@ -95,6 +95,15 @@
         margin-bottom: 1rem;
       }
 
+      .controls > * {
+        flex: 1 1 280px;
+        min-height: 3.5rem;
+      }
+
+      .controls input[type="text"] {
+        max-width: 460px;
+      }
+
       table {
         border-collapse: collapse;
         width: 100%;
@@ -116,6 +125,25 @@
         letter-spacing: 0.06em;
       }
 
+      .sort-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-weight: 700;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        cursor: pointer;
+      }
+
+      .sort-button:hover {
+        color: #dbeafe;
+      }
+
       tbody tr {
         background: var(--table-row);
       }
@@ -129,11 +157,12 @@
       }
 
       input, select, button {
-        padding: 0.8rem 0.95rem;
+        padding: 1rem 1.1rem;
         border-radius: 12px;
         border: 1px solid rgba(96, 165, 250, 0.18);
         background: var(--input-bg);
         color: var(--text);
+        font-size: 1rem;
         outline: none;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
