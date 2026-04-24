@@ -380,6 +380,183 @@ fn sample_data() -> Vec<Benchmark> {
     .collect()
 }
 
+#[derive(Clone, Debug, PartialEq)]
+struct BenchmarkDetails {
+    provider: String,
+    instance_type: String,
+    cpu_model: String,
+    cpu_arch: String,
+    vcpus: u32,
+    memory_gib: u32,
+    region: String,
+    operating_system: String,
+    runtime_secs: u32,
+    hourly_cost_cents: u32,
+    samples: u32,
+    benchmark_focus: String,
+    notes: String,
+}
+
+fn format_duration(seconds: u32) -> String {
+    let minutes = seconds / 60;
+    let remaining_seconds = seconds % 60;
+
+    if minutes == 0 {
+        format!("{}s", seconds)
+    } else {
+        format!("{}m {}s", minutes, remaining_seconds)
+    }
+}
+
+fn extract_provider(device: &str) -> String {
+    device.split_whitespace().next().unwrap_or("Unknown").into()
+}
+
+fn extract_instance_type(device: &str) -> String {
+    device
+        .split_once(' ')
+        .map(|(_, rest)| rest.split(" (").next().unwrap_or(rest).to_string())
+        .unwrap_or_else(|| device.to_string())
+}
+
+fn extract_cpu_model(device: &str) -> String {
+    device
+        .split_once('(')
+        .and_then(|(_, rest)| rest.strip_suffix(')'))
+        .unwrap_or("Unknown CPU")
+        .to_string()
+}
+
+fn detect_cpu_arch(cpu_model: &str) -> String {
+    if cpu_model.contains("Graviton") || cpu_model.contains("Ampere") {
+        "Arm64".into()
+    } else {
+        "x86_64".into()
+    }
+}
+
+fn estimate_vcpus(provider: &str, instance_type: &str) -> u32 {
+    if provider == "AWS" {
+        let size = instance_type.rsplit('.').next().unwrap_or_default();
+        match size {
+            "large" => 2,
+            "xlarge" => 4,
+            _ if size.ends_with("xlarge") => size
+                .trim_end_matches("xlarge")
+                .parse::<u32>()
+                .map(|multiplier| multiplier * 4)
+                .unwrap_or(4),
+            _ => 4,
+        }
+    } else {
+        instance_type
+            .rsplit('-')
+            .next()
+            .and_then(|count| count.parse::<u32>().ok())
+            .unwrap_or(4)
+    }
+}
+
+fn estimate_memory_gib(instance_type: &str, vcpus: u32) -> u32 {
+    let gib_per_vcpu = if instance_type.contains("highmem") || instance_type.starts_with('r') {
+        8
+    } else if instance_type.contains("highcpu") {
+        1
+    } else if instance_type.starts_with('m') || instance_type.starts_with('n') {
+        4
+    } else if instance_type.starts_with('i') {
+        8
+    } else {
+        2
+    };
+
+    vcpus * gib_per_vcpu
+}
+
+fn benchmark_runtime_secs(benchmark_name: &str) -> u32 {
+    match benchmark_name {
+        "Geekbench 6 Multi" => 300,
+        "SPECint2017 Rate" => 900,
+        "OpenSSL RSA Sign" => 240,
+        "NGINX Req/s" => 420,
+        "PostgreSQL TPS" => 600,
+        "7-Zip Compression" => 480,
+        _ => 360,
+    }
+}
+
+fn estimated_hourly_cost_cents(cost_per_run_cents: u32, runtime_secs: u32) -> u32 {
+    ((cost_per_run_cents * 3600) + (runtime_secs - 1)) / runtime_secs
+}
+
+fn pick_region(provider: &str, score: u32, test_date: &str) -> String {
+    let aws_regions = ["us-east-1", "eu-west-1", "ap-southeast-2"];
+    let gcp_regions = ["us-central1", "europe-west4", "asia-southeast1"];
+    let day = test_date
+        .rsplit('-')
+        .next()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(1);
+    let index = (score as usize + day) % 3;
+
+    if provider == "AWS" {
+        aws_regions[index].into()
+    } else {
+        gcp_regions[index].into()
+    }
+}
+
+fn benchmark_focus(benchmark_name: &str) -> String {
+    match benchmark_name {
+        "Geekbench 6 Multi" => "Broad multi-core application throughput".into(),
+        "SPECint2017 Rate" => "Integer-heavy server-side compute throughput".into(),
+        "OpenSSL RSA Sign" => "Cryptographic signing throughput".into(),
+        "NGINX Req/s" => "HTTP serving capacity under concurrent load".into(),
+        "PostgreSQL TPS" => "Transactional database throughput".into(),
+        "7-Zip Compression" => "Compression speed and memory efficiency".into(),
+        _ => "Synthetic benchmark profile".into(),
+    }
+}
+
+fn build_benchmark_details(benchmark: &Benchmark) -> BenchmarkDetails {
+    let provider = extract_provider(&benchmark.device);
+    let instance_type = extract_instance_type(&benchmark.device);
+    let cpu_model = extract_cpu_model(&benchmark.device);
+    let cpu_arch = detect_cpu_arch(&cpu_model);
+    let vcpus = estimate_vcpus(&provider, &instance_type);
+    let memory_gib = estimate_memory_gib(&instance_type, vcpus);
+    let runtime_secs = benchmark_runtime_secs(&benchmark.benchmark);
+    let hourly_cost_cents = estimated_hourly_cost_cents(benchmark.cost_per_run_cents, runtime_secs);
+    let region = pick_region(&provider, benchmark.score, &benchmark.test_date);
+    let operating_system = if provider == "AWS" {
+        "Amazon Linux 2023".to_string()
+    } else {
+        "Debian 12".to_string()
+    };
+    let samples = 5 + (benchmark.score % 3);
+    let benchmark_focus = benchmark_focus(&benchmark.benchmark);
+    let notes = format!(
+        "Generated synthetic drill-down data for {} on {}. This detail view is intended for UI exploration only.",
+        benchmark.benchmark, benchmark.device
+    );
+
+    BenchmarkDetails {
+        provider,
+        instance_type,
+        cpu_model,
+        cpu_arch,
+        vcpus,
+        memory_gib,
+        region,
+        operating_system,
+        runtime_secs,
+        hourly_cost_cents,
+        samples,
+        benchmark_focus,
+        notes,
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum SortField {
     Device,
@@ -442,6 +619,7 @@ fn app() -> Html {
     let all_data = use_state(sample_data);
     let filter_text = use_state(String::new);
     let sort_config = use_state(|| None::<SortConfig>);
+    let selected_benchmark = use_state(|| None::<Benchmark>);
 
     let on_filter_input = {
         let filter_text = filter_text.clone();
@@ -486,6 +664,13 @@ fn app() -> Html {
         })
     };
 
+    let on_close_details = {
+        let selected_benchmark = selected_benchmark.clone();
+        Callback::from(move |_| {
+            selected_benchmark.set(None);
+        })
+    };
+
     let mut filtered: Vec<Benchmark> = all_data
         .iter()
         .filter(|item| {
@@ -500,6 +685,85 @@ fn app() -> Html {
     if let Some(config) = *sort_config {
         sort_benchmarks(&mut filtered, config);
     }
+
+    let details_modal = if let Some(benchmark) = (*selected_benchmark).clone() {
+        let details = build_benchmark_details(&benchmark);
+
+        html! {
+            <div class="details-overlay">
+                <section class="details-modal" role="dialog" aria-modal="true" aria-label="Benchmark details">
+                    <div class="details-header">
+                        <div>
+                            <span class="eyebrow">{ "Benchmark details" }</span>
+                            <h2>{ &benchmark.benchmark }</h2>
+                            <p>
+                                { format!(
+                                    "{} · score {} · {} per run",
+                                    benchmark.device,
+                                    benchmark.score,
+                                    format_cost(benchmark.cost_per_run_cents)
+                                ) }
+                            </p>
+                        </div>
+                        <button class="details-close" type="button" onclick={on_close_details.clone()}>{ "Close" }</button>
+                    </div>
+
+                    <div class="detail-grid">
+                        <article class="detail-card">
+                            <span class="detail-label">{ "Provider" }</span>
+                            <strong>{ &details.provider }</strong>
+                        </article>
+                        <article class="detail-card">
+                            <span class="detail-label">{ "Architecture" }</span>
+                            <strong>{ &details.cpu_arch }</strong>
+                        </article>
+                        <article class="detail-card">
+                            <span class="detail-label">{ "vCPUs" }</span>
+                            <strong>{ details.vcpus }</strong>
+                        </article>
+                        <article class="detail-card">
+                            <span class="detail-label">{ "Memory" }</span>
+                            <strong>{ format!("{} GiB", details.memory_gib) }</strong>
+                        </article>
+                        <article class="detail-card">
+                            <span class="detail-label">{ "Runtime" }</span>
+                            <strong>{ format_duration(details.runtime_secs) }</strong>
+                        </article>
+                        <article class="detail-card">
+                            <span class="detail-label">{ "Hourly cost" }</span>
+                            <strong>{ format_cost(details.hourly_cost_cents) }</strong>
+                        </article>
+                    </div>
+
+                    <div class="detail-columns">
+                        <section class="detail-section">
+                            <h3>{ "Environment" }</h3>
+                            <ul class="detail-list">
+                                <li><span>{ "Instance type" }</span><strong>{ &details.instance_type }</strong></li>
+                                <li><span>{ "CPU model" }</span><strong>{ &details.cpu_model }</strong></li>
+                                <li><span>{ "Region" }</span><strong>{ &details.region }</strong></li>
+                                <li><span>{ "OS image" }</span><strong>{ &details.operating_system }</strong></li>
+                            </ul>
+                        </section>
+
+                        <section class="detail-section">
+                            <h3>{ "Run metadata" }</h3>
+                            <ul class="detail-list">
+                                <li><span>{ "Benchmark focus" }</span><strong>{ &details.benchmark_focus }</strong></li>
+                                <li><span>{ "Samples collected" }</span><strong>{ details.samples }</strong></li>
+                                <li><span>{ "Test date" }</span><strong>{ &benchmark.test_date }</strong></li>
+                                <li><span>{ "Synthetic note" }</span><strong>{ "Generated mock metadata" }</strong></li>
+                            </ul>
+                        </section>
+                    </div>
+
+                    <p class="detail-footnote">{ &details.notes }</p>
+                </section>
+            </div>
+        }
+    } else {
+        html! {}
+    };
 
     html! {
         <main class="app-shell">
@@ -558,7 +822,21 @@ fn app() -> Html {
                             { for filtered.iter().map(|item| html! {
                                 <tr>
                                     <td>{ &item.device }</td>
-                                    <td>{ &item.benchmark }</td>
+                                    <td>
+                                        <button
+                                            class="benchmark-link"
+                                            type="button"
+                                            onclick={{
+                                                let selected_benchmark = selected_benchmark.clone();
+                                                let item = item.clone();
+                                                Callback::from(move |_| {
+                                                    selected_benchmark.set(Some(item.clone()));
+                                                })
+                                            }}
+                                        >
+                                            { &item.benchmark }
+                                        </button>
+                                    </td>
                                     <td>{ item.score }</td>
                                     <td>{ format_cost(item.cost_per_run_cents) }</td>
                                     <td>{ &item.test_date }</td>
@@ -568,6 +846,8 @@ fn app() -> Html {
                     </table>
                 </div>
             </section>
+
+            { details_modal }
         </main>
     }
 }

@@ -17,6 +17,12 @@ fn format_cost_uses_dollars_and_cents() {
 }
 
 #[test]
+fn format_duration_formats_minutes_and_seconds() {
+    assert_eq!(format_duration(45), "45s");
+    assert_eq!(format_duration(300), "5m 0s");
+}
+
+#[test]
 fn toggle_sort_flips_same_field_direction() {
     let initial = toggle_sort(None, SortField::Score);
     let toggled = toggle_sort(initial, SortField::Score);
@@ -92,4 +98,32 @@ fn sort_indicator_matches_active_direction() {
     assert_eq!(sort_indicator(ascending, SortField::Device), " ↑");
     assert_eq!(sort_indicator(descending, SortField::Device), " ↓");
     assert_eq!(sort_indicator(descending, SortField::Score), "");
+}
+
+#[test]
+fn build_benchmark_details_generates_drill_down_metadata() {
+    let benchmark = Benchmark {
+        device: "AWS c8g.2xlarge (Graviton4)".into(),
+        benchmark: "Geekbench 6 Multi".into(),
+        score: 70210,
+        cost_per_run_cents: 138,
+        test_date: "2026-02-05".into(),
+    };
+
+    let details = build_benchmark_details(&benchmark);
+
+    assert_eq!(details.provider, "AWS");
+    assert_eq!(details.instance_type, "c8g.2xlarge");
+    assert_eq!(details.cpu_model, "Graviton4");
+    assert_eq!(details.cpu_arch, "Arm64");
+    assert_eq!(details.vcpus, 8);
+    assert_eq!(details.memory_gib, 16);
+    assert_eq!(details.runtime_secs, 300);
+    assert_eq!(details.hourly_cost_cents, 1656);
+}
+
+#[test]
+fn estimate_vcpus_supports_gcp_shapes() {
+    assert_eq!(estimate_vcpus("GCP", "c3-highcpu-44"), 44);
+    assert_eq!(estimate_vcpus("GCP", "t2a-standard-16"), 16);
 }
