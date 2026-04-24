@@ -68,8 +68,14 @@ fn sort_benchmarks_orders_by_cost_and_date() {
         },
     );
 
-    assert_eq!(data.first().map(|item| item.test_date.as_str()), Some("2026-03-25"));
-    assert_eq!(data.last().map(|item| item.test_date.as_str()), Some("2026-02-03"));
+    assert_eq!(
+        data.first().map(|item| item.test_date.as_str()),
+        Some("2026-03-25")
+    );
+    assert_eq!(
+        data.last().map(|item| item.test_date.as_str()),
+        Some("2026-02-03")
+    );
 }
 
 #[test]
