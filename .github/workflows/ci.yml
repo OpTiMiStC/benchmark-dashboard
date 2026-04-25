@@ -43,5 +43,8 @@ jobs:
       - name: Lint (clippy)
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+      - name: Run tests
+        run: cargo test
+
       - name: Build (WASM)
         run: trunk build --release --public-url /benchmark-dashboard/
