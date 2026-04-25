@@ -1,3 +1,5 @@
+#![cfg_attr(not(any(test, target_arch = "wasm32")), allow(dead_code))]
+
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
@@ -486,7 +488,7 @@ fn benchmark_runtime_secs(benchmark_name: &str) -> u32 {
 }
 
 fn estimated_hourly_cost_cents(cost_per_run_cents: u32, runtime_secs: u32) -> u32 {
-    ((cost_per_run_cents * 3600) + (runtime_secs - 1)) / runtime_secs
+    (cost_per_run_cents * 3600).div_ceil(runtime_secs)
 }
 
 fn pick_region(provider: &str, score: u32, test_date: &str) -> String {
@@ -675,9 +677,8 @@ fn app() -> Html {
         .iter()
         .filter(|item| {
             let text = filter_text.to_lowercase();
-            let matches_text = item.device.to_lowercase().contains(&text)
-                || item.benchmark.to_lowercase().contains(&text);
-            matches_text
+            item.device.to_lowercase().contains(&text)
+                || item.benchmark.to_lowercase().contains(&text)
         })
         .cloned()
         .collect();
