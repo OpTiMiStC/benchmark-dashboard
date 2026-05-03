@@ -510,8 +510,8 @@ fn pick_region(provider: &str, score: u32, test_date: &str) -> String {
 
 fn benchmark_focus(benchmark_name: &str) -> String {
     match benchmark_name {
-        "Geekbench 6 Multi" => "Broad multi-core application throughput".into(),
-        "SPECint2017 Rate" => "Integer-heavy server-side compute throughput".into(),
+        "Geekbench 6 Multi" => "Broad application throughput".into(),
+        "SPECint2017 Rate" => "Integer-heavy compute throughput".into(),
         "OpenSSL RSA Sign" => "Cryptographic signing throughput".into(),
         "NGINX Req/s" => "HTTP serving capacity under concurrent load".into(),
         "PostgreSQL TPS" => "Transactional database throughput".into(),
@@ -715,7 +715,7 @@ fn app() -> Html {
                             <strong>{ &details.provider }</strong>
                         </article>
                         <article class="detail-card">
-                            <span class="detail-label">{ "Architecture" }</span>
+                            <span class="detail-label">{ "Platform architecture" }</span>
                             <strong>{ &details.cpu_arch }</strong>
                         </article>
                         <article class="detail-card">
@@ -741,7 +741,7 @@ fn app() -> Html {
                             <h3>{ "Environment" }</h3>
                             <ul class="detail-list">
                                 <li><span>{ "Instance type" }</span><strong>{ &details.instance_type }</strong></li>
-                                <li><span>{ "CPU model" }</span><strong>{ &details.cpu_model }</strong></li>
+                                <li><span>{ "Platform model" }</span><strong>{ &details.cpu_model }</strong></li>
                                 <li><span>{ "Region" }</span><strong>{ &details.region }</strong></li>
                                 <li><span>{ "OS image" }</span><strong>{ &details.operating_system }</strong></li>
                             </ul>
@@ -769,10 +769,10 @@ fn app() -> Html {
     html! {
         <main class="app-shell">
             <section class="hero-card">
-                <span class="eyebrow">{ "Server CPU Monitor" }</span>
-                <h1>{ "Cloud Server CPU Benchmark Dashboard" }</h1>
+                <span class="eyebrow">{ "Benchmark Monitor" }</span>
+                <h1>{ "Cloud Benchmark Dashboard" }</h1>
                 <p>
-                    { "Mock AWS EC2 and Google Cloud Compute Engine CPU benchmark data for dashboard and sorting tests." }
+                    { "Mock cloud benchmark data for dashboard and sorting tests." }
                 </p>
             </section>
 
@@ -794,7 +794,7 @@ fn app() -> Html {
                             <tr>
                                 <th>
                                     <button class="sort-button" type="button" onclick={on_sort_device}>
-                                        { format!("Device{}", sort_indicator(*sort_config, SortField::Device)) }
+                                        { format!("Platform{}", sort_indicator(*sort_config, SortField::Device)) }
                                     </button>
                                 </th>
                                 <th>
