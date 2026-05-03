@@ -14,9 +14,9 @@ provider "github" {
   token = var.github_token
 }
 
-resource "github_branch_protection" "main" {
+resource "github_branch_protection" "release" {
   repository_id = var.repository_name
-  pattern       = "main"
+  pattern       = "release"
 
   allows_deletions    = false
   allows_force_pushes = false
